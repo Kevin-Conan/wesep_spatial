@@ -44,12 +44,15 @@ def download(url: str, dest: str, only_child=True):
     # *.tar.gz
     name = url.split("?")[0].split("/")[-1]
     file_path = os.path.join(dest, name)
-    with tqdm.tqdm(
-        unit="B", unit_scale=True, unit_divisor=1024, miniters=1, desc=(name)
-    ) as t:
-        urlretrieve(
-            url, filename=file_path, reporthook=progress_hook(t), data=None
-        )
+    with tqdm.tqdm(unit="B",
+                   unit_scale=True,
+                   unit_divisor=1024,
+                   miniters=1,
+                   desc=(name)) as t:
+        urlretrieve(url,
+                    filename=file_path,
+                    reporthook=progress_hook(t),
+                    data=None)
         t.total = t.n
 
     if name.endswith((".tar.gz", ".tar")):
@@ -71,16 +74,15 @@ def download(url: str, dest: str, only_child=True):
                 zip_ref.extractall(dest)
             else:
                 for member in zip_ref.namelist():
-                    member_path = os.path.relpath(
-                        member, start=os.path.commonpath(zip_ref.namelist())
-                    )
+                    member_path = os.path.relpath(member,
+                                                  start=os.path.commonpath(
+                                                      zip_ref.namelist()))
                     print(member_path)
                     if "/" not in member_path:
                         continue
                     name = os.path.basename(member_path)
                     with zip_ref.open(member_path) as source, open(
-                        os.path.join(dest, name), "wb"
-                    ) as target:
+                            os.path.join(dest, name), "wb") as target:
                         target.write(source.read())
 
 
@@ -90,10 +92,9 @@ class Hub(object):
     }
     #   Hard coding of the URL
     ModelURLs = {
-        "bsrnn_ecapa_vox1.tar.gz": (
-            "https://www.modelscope.cn/datasets/wenet/wesep_pretrained_models/"
-            "resolve/master/bsrnn_ecapa_vox1.tar.gz"
-        ),
+        "bsrnn_ecapa_vox1.tar.gz":
+        ("https://www.modelscope.cn/datasets/wenet/wesep_pretrained_models/"
+         "resolve/master/bsrnn_ecapa_vox1.tar.gz"),
     }
 
     def __init__(self) -> None:
@@ -109,9 +110,8 @@ class Hub(object):
         model_dir = os.path.join(Path.home(), ".wesep", lang)
         if not os.path.exists(model_dir):
             os.makedirs(model_dir)
-        if set(["avg_model.pt", "config.yaml"]).issubset(
-            set(os.listdir(model_dir))
-        ):
+        if set(["avg_model.pt",
+                "config.yaml"]).issubset(set(os.listdir(model_dir))):
             return model_dir
         else:
             if model_name in Hub.ModelURLs:

@@ -31,17 +31,16 @@ class ResRNN(nn.Module):
         )
 
         # linear projection layer
-        self.proj = nn.Linear(
-            hidden_size * 2, input_size
-        )  # hidden_size = feature_dim * 2
+        self.proj = nn.Linear(hidden_size * 2,
+                              input_size)  # hidden_size = feature_dim * 2
 
     def forward(self, input):
         # input shape: batch, dim, seq
 
         rnn_output, _ = self.rnn(self.norm(input).transpose(1, 2).contiguous())
-        rnn_output = self.proj(
-            rnn_output.contiguous().view(-1, rnn_output.shape[2])
-        ).view(input.shape[0], input.shape[2], input.shape[1])
+        rnn_output = self.proj(rnn_output.contiguous().view(
+            -1, rnn_output.shape[2])).view(input.shape[0], input.shape[2],
+                                           input.shape[1])
 
         return input + rnn_output.transpose(1, 2).contiguous()
 
@@ -59,31 +58,26 @@ class BSNet(nn.Module):
 
         self.nband = nband
         self.feature_dim = in_channel // nband
-        self.band_rnn = ResRNN(
-            self.feature_dim, self.feature_dim * 2, bidirectional=bidirectional
-        )
-        self.band_comm = ResRNN(
-            self.feature_dim, self.feature_dim * 2, bidirectional=bidirectional
-        )
+        self.band_rnn = ResRNN(self.feature_dim,
+                               self.feature_dim * 2,
+                               bidirectional=bidirectional)
+        self.band_comm = ResRNN(self.feature_dim,
+                                self.feature_dim * 2,
+                                bidirectional=bidirectional)
 
     def forward(self, input, dummy: Optional[torch.Tensor] = None):
         # input shape: B, nband*N, T
         B, N, T = input.shape
 
         band_output = self.band_rnn(
-            input.view(B * self.nband, self.feature_dim, -1)
-        ).view(B, self.nband, -1, T)
+            input.view(B * self.nband, self.feature_dim,
+                       -1)).view(B, self.nband, -1, T)
 
         # band comm
-        band_output = (
-            band_output.permute(0, 3, 2, 1).contiguous().view(B * T, -1, self.nband)
-        )
-        output = (
-            self.band_comm(band_output)
-            .view(B, T, -1, self.nband)
-            .permute(0, 3, 2, 1)
-            .contiguous()
-        )
+        band_output = (band_output.permute(0, 3, 2, 1).contiguous().view(
+            B * T, -1, self.nband))
+        output = (self.band_comm(band_output).view(
+            B, T, -1, self.nband).permute(0, 3, 2, 1).contiguous())
 
         return output.view(B, N, T)
 
@@ -115,8 +109,7 @@ class FuseSeparation(nn.Module):
                         embed_dim=spk_emb_dim,
                         feat_dim=feature_dim,
                         fuse_type=spk_fuse_type,
-                    )
-                )
+                    ))
                 self.separation.append(BSNet(nband * feature_dim, nband))
         else:
             self.separation.append(
@@ -124,8 +117,7 @@ class FuseSeparation(nn.Module):
                     embed_dim=spk_emb_dim,
                     feat_dim=feature_dim,
                     fuse_type=spk_fuse_type,
-                )
-            )
+                ))
             for _ in range(num_repeat):
                 self.separation.append(BSNet(nband * feature_dim, nband))
 
@@ -140,9 +132,11 @@ class FuseSeparation(nn.Module):
             for i, sep_func in enumerate(self.separation):
                 x = sep_func(x, spk_embedding)
                 if i % 2 == 0:
-                    x = x.view(batch_size * nch, self.nband * self.feature_dim, -1)
+                    x = x.view(batch_size * nch, self.nband * self.feature_dim,
+                               -1)
                 else:
-                    x = x.view(batch_size * nch, self.nband, self.feature_dim, -1)
+                    x = x.view(batch_size * nch, self.nband, self.feature_dim,
+                               -1)
         else:
             x = self.separation[0](x, spk_embedding)
             x = x.view(batch_size * nch, self.nband * self.feature_dim, -1)
@@ -260,8 +254,7 @@ class BSRNN_Multi(nn.Module):
                 nn.Sequential(
                     nn.GroupNorm(1, self.band_width[i] * 2, self.eps),
                     nn.Conv1d(self.band_width[i] * 2, self.feature_dim, 1),
-                )
-            )
+                ))
 
         self.separator = FuseSeparation(
             nband=self.nband,
@@ -278,14 +271,14 @@ class BSRNN_Multi(nn.Module):
         for i in range(self.nband):
             self.mask.append(
                 nn.Sequential(
-                    nn.GroupNorm(1, self.feature_dim, torch.finfo(torch.float32).eps),
+                    nn.GroupNorm(1, self.feature_dim,
+                                 torch.finfo(torch.float32).eps),
                     nn.Conv1d(self.feature_dim, self.feature_dim * 4, 1),
                     nn.Tanh(),
                     nn.Conv1d(self.feature_dim * 4, self.feature_dim * 4, 1),
                     nn.Tanh(),
                     nn.Conv1d(self.feature_dim * 4, self.band_width[i] * 4, 1),
-                )
-            )
+                ))
 
     def pad_input(self, input, window, stride):
         """
@@ -316,9 +309,8 @@ class BSRNN_Multi(nn.Module):
             wav_input,
             n_fft=self.win,
             hop_length=self.stride,
-            window=torch.hann_window(self.win)
-            .to(wav_input.device)
-            .type(wav_input.type()),
+            window=torch.hann_window(self.win).to(wav_input.device).type(
+                wav_input.type()),
             return_complex=True,
         )
 
@@ -328,26 +320,23 @@ class BSRNN_Multi(nn.Module):
         subband_mix_spec = []
         band_idx = 0
         for i in range(len(self.band_width)):
-            subband_spec.append(
-                spec_RI[:, :, band_idx : band_idx + self.band_width[i]].contiguous()
-            )
-            subband_mix_spec.append(
-                spec[:, band_idx : band_idx + self.band_width[i]]
-            )  # B*nch, BW, T
+            subband_spec.append(spec_RI[:, :, band_idx:band_idx +
+                                        self.band_width[i]].contiguous())
+            subband_mix_spec.append(spec[:, band_idx:band_idx +
+                                         self.band_width[i]])  # B*nch, BW, T
             band_idx += self.band_width[i]
 
         # normalization and bottleneck
         subband_feature = []
         for i, bn_func in enumerate(self.BN):
             subband_feature.append(
-                bn_func(
-                    subband_spec[i].view(batch_size * nch, self.band_width[i] * 2, -1)
-                )
-            )
+                bn_func(subband_spec[i].view(batch_size * nch,
+                                             self.band_width[i] * 2, -1)))
         subband_feature = torch.stack(subband_feature, 1)  # B, nband, N, T
         # print(subband_feature.size(), spk_emb_input.size())
 
-        predict_speaker_lable = torch.tensor(0.0).to(spk_emb_input.device)  # dummy
+        predict_speaker_lable = torch.tensor(0.0).to(
+            spk_emb_input.device)  # dummy
         if self.joint_training:
             if not self.spk_feat:
                 if self.feat_type == "consistent":
@@ -356,8 +345,7 @@ class BSRNN_Multi(nn.Module):
                         spk_emb_input = self.spk_encoder(spk_emb_input) + 1e-8
                         spk_emb_input = spk_emb_input.log()
                         spk_emb_input = spk_emb_input - torch.mean(
-                            spk_emb_input, dim=-1, keepdim=True
-                        )
+                            spk_emb_input, dim=-1, keepdim=True)
                         spk_emb_input = spk_emb_input.permute(0, 2, 1)
 
             tmp_spk_emb_input = self.spk_model(spk_emb_input)
@@ -370,35 +358,32 @@ class BSRNN_Multi(nn.Module):
         spk_embedding = self.spk_transform(spk_emb_input)
         spk_embedding = spk_embedding.unsqueeze(1).unsqueeze(3)
 
-        sep_output = self.separator(subband_feature, spk_embedding, torch.tensor(nch))
+        sep_output = self.separator(subband_feature, spk_embedding,
+                                    torch.tensor(nch))
 
         sep_subband_spec = []
         for i, mask_func in enumerate(self.mask):
             this_output = mask_func(sep_output[:, i]).view(
-                batch_size * nch, 2, 2, self.band_width[i], -1
-            )
+                batch_size * nch, 2, 2, self.band_width[i], -1)
             this_mask = this_output[:, 0] * torch.sigmoid(
-                this_output[:, 1]
-            )  # B*nch, 2, K, BW, T
+                this_output[:, 1])  # B*nch, 2, K, BW, T
             this_mask_real = this_mask[:, 0]  # B*nch, K, BW, T
             this_mask_imag = this_mask[:, 1]  # B*nch, K, BW, T
-            est_spec_real = (
-                subband_mix_spec[i].real * this_mask_real
-                - subband_mix_spec[i].imag * this_mask_imag
-            )  # B*nch, BW, T
-            est_spec_imag = (
-                subband_mix_spec[i].real * this_mask_imag
-                + subband_mix_spec[i].imag * this_mask_real
-            )  # B*nch, BW, T
-            sep_subband_spec.append(torch.complex(est_spec_real, est_spec_imag))
+            est_spec_real = (subband_mix_spec[i].real * this_mask_real -
+                             subband_mix_spec[i].imag * this_mask_imag
+                             )  # B*nch, BW, T
+            est_spec_imag = (subband_mix_spec[i].real * this_mask_imag +
+                             subband_mix_spec[i].imag * this_mask_real
+                             )  # B*nch, BW, T
+            sep_subband_spec.append(torch.complex(est_spec_real,
+                                                  est_spec_imag))
         est_spec = torch.cat(sep_subband_spec, 1)  # B*nch, F, T
         output = torch.istft(
             est_spec.view(batch_size * nch, self.enc_dim, -1),
             n_fft=self.win,
             hop_length=self.stride,
-            window=torch.hann_window(self.win)
-            .to(wav_input.device)
-            .type(wav_input.type()),
+            window=torch.hann_window(self.win).to(wav_input.device).type(
+                wav_input.type()),
             length=nsample,
         )
 
@@ -407,17 +392,16 @@ class BSRNN_Multi(nn.Module):
         if torch.is_grad_enabled():
             self_embedding = s.detach()
             self_predict_speaker_lable = torch.tensor(0.0).to(
-                self_embedding.device
-            )  # dummy
+                self_embedding.device)  # dummy
             if self.joint_training:
                 if self.feat_type == "consistent":
                     with torch.no_grad():
                         self_embedding = self.preEmphasis(self_embedding)
-                        self_embedding = self.spk_encoder(self_embedding) + 1e-8
+                        self_embedding = self.spk_encoder(
+                            self_embedding) + 1e-8
                         self_embedding = self_embedding.log()
                         self_embedding = self_embedding - torch.mean(
-                            self_embedding, dim=-1, keepdim=True
-                        )
+                            self_embedding, dim=-1, keepdim=True)
                         self_embedding = self_embedding.permute(0, 2, 1)
 
                 self_tmp_spk_emb_input = self.spk_model(self_embedding)
@@ -425,44 +409,39 @@ class BSRNN_Multi(nn.Module):
                     self_spk_emb_input = self_tmp_spk_emb_input[-1]
                 else:
                     self_spk_emb_input = self_tmp_spk_emb_input
-                self_predict_speaker_lable = self.pred_linear(self_spk_emb_input)
+                self_predict_speaker_lable = self.pred_linear(
+                    self_spk_emb_input)
 
             self_spk_embedding = self.spk_transform(self_spk_emb_input)
             self_spk_embedding = self_spk_embedding.unsqueeze(1).unsqueeze(3)
 
-            self_sep_output = self.separator(
-                subband_feature, self_spk_embedding, torch.tensor(nch)
-            )
+            self_sep_output = self.separator(subband_feature,
+                                             self_spk_embedding,
+                                             torch.tensor(nch))
 
             self_sep_subband_spec = []
             for i, mask_func in enumerate(self.mask):
                 this_output = mask_func(self_sep_output[:, i]).view(
-                    batch_size * nch, 2, 2, self.band_width[i], -1
-                )
+                    batch_size * nch, 2, 2, self.band_width[i], -1)
                 this_mask = this_output[:, 0] * torch.sigmoid(
-                    this_output[:, 1]
-                )  # B*nch, 2, K, BW, T
+                    this_output[:, 1])  # B*nch, 2, K, BW, T
                 this_mask_real = this_mask[:, 0]  # B*nch, K, BW, T
                 this_mask_imag = this_mask[:, 1]  # B*nch, K, BW, T
-                est_spec_real = (
-                    subband_mix_spec[i].real * this_mask_real
-                    - subband_mix_spec[i].imag * this_mask_imag
-                )  # B*nch, BW, T
-                est_spec_imag = (
-                    subband_mix_spec[i].real * this_mask_imag
-                    + subband_mix_spec[i].imag * this_mask_real
-                )  # B*nch, BW, T
+                est_spec_real = (subband_mix_spec[i].real * this_mask_real -
+                                 subband_mix_spec[i].imag * this_mask_imag
+                                 )  # B*nch, BW, T
+                est_spec_imag = (subband_mix_spec[i].real * this_mask_imag +
+                                 subband_mix_spec[i].imag * this_mask_real
+                                 )  # B*nch, BW, T
                 self_sep_subband_spec.append(
-                    torch.complex(est_spec_real, est_spec_imag)
-                )
+                    torch.complex(est_spec_real, est_spec_imag))
             self_est_spec = torch.cat(self_sep_subband_spec, 1)  # B*nch, F, T
             self_output = torch.istft(
                 self_est_spec.view(batch_size * nch, self.enc_dim, -1),
                 n_fft=self.win,
                 hop_length=self.stride,
-                window=torch.hann_window(self.win)
-                .to(wav_input.device)
-                .type(wav_input.type()),
+                window=torch.hann_window(self.win).to(wav_input.device).type(
+                    wav_input.type()),
                 length=nsample,
             )
 

@@ -27,9 +27,11 @@ def get_args():
         action="store_true",
         help="whether to use the bsrnn model",
     )
-    parser.add_argument(
-        "-p", "--pretrain", type=str, default="", help="model directory"
-    )
+    parser.add_argument("-p",
+                        "--pretrain",
+                        type=str,
+                        default="",
+                        help="model directory")
     parser.add_argument(
         "--device",
         type=str,
@@ -40,21 +42,18 @@ def get_args():
     )
     parser.add_argument("--audio_file", help="mixture's audio file")
     parser.add_argument("--audio_file2", help="enroll's audio file")
-    parser.add_argument(
-        "--resample_rate", type=int, default=16000, help="resampling rate"
-    )
-    parser.add_argument(
-        "--vad", action="store_true", help="whether to do VAD or not"
-    )
-    parser.add_argument(
-        "--output_file",
-        default='./extracted_speech.wav',
-        help="extracted speech saved in .wav"
-    )
-    parser.add_argument(
-        "--output_norm",
-        default=True,
-        help="Control if normalize the output audio in .wav"
-    )
+    parser.add_argument("--resample_rate",
+                        type=int,
+                        default=16000,
+                        help="resampling rate")
+    parser.add_argument("--vad",
+                        action="store_true",
+                        help="whether to do VAD or not")
+    parser.add_argument("--output_file",
+                        default='./extracted_speech.wav',
+                        help="extracted speech saved in .wav")
+    parser.add_argument("--output_norm",
+                        default=True,
+                        help="Control if normalize the output audio in .wav")
     args = parser.parse_args()
     return args

@@ -27,22 +27,22 @@ import torch.distributed as dist
 import yaml
 from torch.utils.data import DataLoader
 
-import wesep.utils.schedulers as schedulers
-from wesep.dataset.dataset import Dataset, tse_collate_fn, tse_collate_fn_2spk
-from wesep.models import get_model
-from wesep.utils.checkpoint import (
+import wesep2.utils.schedulers as schedulers
+from wesep2.dataset.dataset import Dataset, tse_collate_fn, tse_collate_fn_2spk
+from wesep2.models import get_model
+from wesep2.utils.checkpoint import (
     load_checkpoint,
     load_pretrained_model,
     save_checkpoint,
 )
-from wesep.utils.executor import Executor
-from wesep.utils.file_utils import (
+from wesep2.utils.executor import Executor
+from wesep2.utils.file_utils import (
     load_speaker_embeddings,
     read_label_file,
     read_vec_scp_file,
 )
-from wesep.utils.losses import parse_loss
-from wesep.utils.utils import parse_config_or_kwargs, set_seed, setup_logger
+from wesep2.utils.losses import parse_loss
+from wesep2.utils.utils import parse_config_or_kwargs, set_seed, setup_logger
 
 MAX_NUM_log_files = 100  # The maximum number of log-files to be kept
 logging.getLogger("matplotlib.font_manager").setLevel(logging.ERROR)
@@ -212,8 +212,8 @@ def train(config="conf/config.yaml", **kwargs):
     optimizer_list = []
 
     logger.info("<== Model ==>")
-    model = get_model(
-        configs["model"]["tse_model"])(**configs["model_args"]["tse_model"])
+    model = get_model(configs["model"]["tse_model"])(
+        configs["model_args"]["tse_model"])
     num_params = sum(param.numel() for param in model.parameters())
 
     if rank == 0:
@@ -266,7 +266,7 @@ def train(config="conf/config.yaml", **kwargs):
     model_list.append(ddp_model)
     optimizer_list.append(optimizer)
     scheduler_list.append(scheduler)
-    scaler = torch.cuda.amp.GradScaler(enabled=configs["enable_amp"])
+    scaler = torch.amp.GradScaler('cuda', enabled=configs["enable_amp"])
 
     # If specify checkpoint, load some info from checkpoint.
     if checkpoint is not None:

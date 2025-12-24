@@ -84,7 +84,9 @@ class BSNet(nn.Module):
 
         return output.view(B, N, T)
 
+
 class CrossAtt(nn.Module):
+
     def __init__(self, embed_dim, num_heads, *args, **kwargs):
         super(CrossAtt, self).__init__()
         self.multihead_attn = nn.MultiheadAttention(embed_dim, num_heads,
@@ -106,6 +108,7 @@ class CrossAtt(nn.Module):
                                        value.transpose(1, 2))
             spk_embeddings = x.transpose(1, 2)
         return spk_embeddings
+
 
 class FuseSeparation(nn.Module):
 
@@ -130,11 +133,11 @@ class FuseSeparation(nn.Module):
 
         self.attenFuse = nn.ModuleList([])
         if spk_fuse_type and spk_fuse_type.startswith("cross_"):
-            spk_emb_frame_dim = 512     # Ecapa_TDNN
+            spk_emb_frame_dim = 512  # Ecapa_TDNN
             spk_emb_dim = feature_dim
             self.attenFuse.append(nn.Linear(spk_emb_frame_dim, feature_dim))
-            self.attenFuse.append(CrossAtt(embed_dim=feature_dim, num_heads=2,
-                                           batch_first=True))
+            self.attenFuse.append(
+                CrossAtt(embed_dim=feature_dim, num_heads=2, batch_first=True))
 
         self.separation = nn.ModuleList([])
         if self.multi_fuse and self.spk_fuse_type:
@@ -312,7 +315,8 @@ class BSRNN_Feats(nn.Module):
             self.BN.append(
                 nn.Sequential(
                     nn.GroupNorm(1, self.band_width[i] * spec_map, self.eps),
-                    nn.Conv1d(self.band_width[i] * spec_map, self.feature_dim, 1),
+                    nn.Conv1d(self.band_width[i] * spec_map, self.feature_dim,
+                              1),
                 ))
 
         self.separator = FuseSeparation(
@@ -379,10 +383,10 @@ class BSRNN_Feats(nn.Module):
                 spk_emb_input,
                 n_fft=self.win,
                 hop_length=self.stride,
-                window=torch.hann_window(self.win).to(spk_emb_input.device).type(
-                    spk_emb_input.type()),
+                window=torch.hann_window(self.win).to(
+                    spk_emb_input.device).type(spk_emb_input.type()),
                 return_complex=True,
-            )  
+            )
             if self.spectral_feat == 'tfmap_spec':
                 mix_mag_ori = torch.abs(spec)
                 enroll_mag = torch.abs(aux_c)
@@ -400,9 +404,8 @@ class BSRNN_Feats(nn.Module):
                 tf_map = tf_map / tf_map.norm(dim=1, keepdim=True)
                 # Recover the energy of estimated tfmap feature
                 tf_map = (
-                    torch.sum(mix_mag_ori * tf_map, dim=1, keepdim=True) 
-                    * tf_map
-                )
+                    torch.sum(mix_mag_ori * tf_map, dim=1, keepdim=True) *
+                    tf_map)
                 # Another kind of nomalization for tf_map feature
                 # tf_map = tf_map * mix_mag_ori.norm(dim=1, keepdim=True)
 
@@ -411,45 +414,34 @@ class BSRNN_Feats(nn.Module):
             if self.spectral_feat == 'tfmap_emb':  # Only Ecapa-TDNN.
                 with torch.no_grad():
                     signal_dim = wav_input.dim()
-                    extended_shape = (
-                        [1] * (3 - signal_dim) 
-                        + list(wav_input.size())
-                    )
+                    extended_shape = ([1] * (3 - signal_dim) +
+                                      list(wav_input.size()))
                     pad = int(self.win // 2)
-                    mix_emb = F.pad(
-                        wav_input.view(extended_shape),
-                        [pad, pad],
-                        mode="reflect"
-                    )
+                    mix_emb = F.pad(wav_input.view(extended_shape), [pad, pad],
+                                    mode="reflect")
                     mix_emb = mix_emb.view(mix_emb.shape[-signal_dim:])
 
                     signal_dim = spk_emb_input.dim()
-                    extended_shape = (
-                        [1] * (3 - signal_dim) 
-                        + list(spk_emb_input.size())
-                    )
+                    extended_shape = ([1] * (3 - signal_dim) +
+                                      list(spk_emb_input.size()))
                     pad = int(self.win // 2)
-                    spk_emb = F.pad(
-                        spk_emb_input.view(extended_shape),
-                        [pad, pad],
-                        mode="reflect"
-                    )
+                    spk_emb = F.pad(spk_emb_input.view(extended_shape),
+                                    [pad, pad],
+                                    mode="reflect")
                     spk_emb = spk_emb.view(spk_emb.shape[-signal_dim:])
 
                     spk_emb = compute_fbank(
-                        spk_emb, 
+                        spk_emb,
                         frame_length=self.win * 1e3 / self.sr,
                         frame_shift=self.stride * 1e3 / self.sr,
-                        dither=0.0, 
-                        sample_rate=self.sr
-                    )
+                        dither=0.0,
+                        sample_rate=self.sr)
                     mix_emb = compute_fbank(
-                        mix_emb, 
+                        mix_emb,
                         frame_length=self.win * 1e3 / self.sr,
                         frame_shift=self.stride * 1e3 / self.sr,
-                        dither=0.0, 
-                        sample_rate=self.sr
-                    )
+                        dither=0.0,
+                        sample_rate=self.sr)
                     mix_emb = apply_cmvn(mix_emb)
                     spk_emb = apply_cmvn(spk_emb)
 
@@ -482,9 +474,8 @@ class BSRNN_Feats(nn.Module):
                 tf_map = tf_map / tf_map.norm(dim=1, keepdim=True)
                 # Recover the energy of estimated tfmap feature
                 tf_map = (
-                    torch.sum(mix_mag_ori * tf_map, dim=1, keepdim=True) 
-                    * tf_map
-                )
+                    torch.sum(mix_mag_ori * tf_map, dim=1, keepdim=True) *
+                    tf_map)
                 # Another kind of nomalization for tf_map feature
                 # tf_map = tf_map * mix_mag_ori.norm(dim=1, keepdim=True)
 
@@ -505,19 +496,17 @@ class BSRNN_Feats(nn.Module):
         subband_feature = []
         for i, bn_func in enumerate(self.BN):
             subband_feature.append(
-                bn_func(subband_spec[i].view(batch_size * nch,
-                                             self.band_width[i] * self.spec_map,
-                                             -1)))
+                bn_func(subband_spec[i].view(
+                    batch_size * nch, self.band_width[i] * self.spec_map, -1)))
         subband_feature = torch.stack(subband_feature, 1)  # B, nband, N, T
         # print(subband_feature.size(), spk_emb_input.size())
 
         predict_speaker_lable = torch.tensor(0.0).to(
             spk_emb_input.device)  # dummy
-        if (
-            (self.spectral_feat and self.spectral_feat == "tfmap_emb")
-            and (self.spk_fuse_type and self.spk_fuse_type.startswith("cross_"))
-        ):
+        if ((self.spectral_feat and self.spectral_feat == "tfmap_emb") and
+            (self.spk_fuse_type and self.spk_fuse_type.startswith("cross_"))):
             spk_emb_input = spk_emb_frame
+
         elif self.joint_training and self.spk_fuse_type:
             if not self.spk_feat:
                 if self.feat_type == "consistent":
@@ -581,22 +570,20 @@ class BSRNN_Feats(nn.Module):
 if __name__ == "__main__":
     from thop import profile, clever_format
 
-    model = BSRNN_Feats(
-        spk_emb_dim=256,
-        sr=16000,
-        win=512,
-        stride=128,
-        feature_dim=128,
-        num_repeat=6,
-        spectral_feat='tfmap_emb',
-        spk_fuse_type='cross_multiply',
-        spk_model="ECAPA_TDNN_GLOB_c512",
-        spk_args={
-            "embed_dim": 192,
-            "feat_dim": 80,
-            "pooling_func": "ASTP",
-        }
-    )
+    model = BSRNN_Feats(spk_emb_dim=256,
+                        sr=16000,
+                        win=512,
+                        stride=128,
+                        feature_dim=128,
+                        num_repeat=6,
+                        spectral_feat='tfmap_emb',
+                        spk_fuse_type='cross_multiply',
+                        spk_model="ECAPA_TDNN_GLOB_c512",
+                        spk_args={
+                            "embed_dim": 192,
+                            "feat_dim": 80,
+                            "pooling_func": "ASTP",
+                        })
 
     s = 0
     for param in model.parameters():

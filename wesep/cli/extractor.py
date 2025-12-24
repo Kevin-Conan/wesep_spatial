@@ -27,22 +27,22 @@ class Extractor:
             if 'spk_model_init' in configs['model_args']['tse_model']:
                 configs['model_args']['tse_model']['spk_model_init'] = False
         self.model = get_model(configs["model"]["tse_model"])(
-            **configs["model_args"]["tse_model"]
-        )
+            **configs["model_args"]["tse_model"])
         load_pretrained_model(self.model, model_path)
         self.model.eval()
         self.vad = load_silero_vad()
         self.table = {}
-        self.resample_rate = configs["dataset_args"].get("resample_rate", 16000)
+        self.resample_rate = configs["dataset_args"].get(
+            "resample_rate", 16000)
         self.apply_vad = False
         self.device = torch.device("cpu")
         self.wavform_norm = True
         self.output_norm = True
 
-        self.speaker_feat = configs["model_args"]["tse_model"].get("spk_feat", False)
+        self.speaker_feat = configs["model_args"]["tse_model"].get(
+            "spk_feat", False)
         self.joint_training = configs["model_args"]["tse_model"].get(
-            "joint_training", False
-        )
+            "joint_training", False)
 
     def set_wavform_norm(self, wavform_norm: bool):
         self.wavform_norm = wavform_norm
@@ -81,21 +81,15 @@ class Extractor:
         return feat
 
     def extract_speech(self, audio_path: str, audio_path_2: str):
-        pcm_mix, sample_rate_mix = torchaudio.load(
-            audio_path, normalize=self.wavform_norm
-        )
+        pcm_mix, sample_rate_mix = torchaudio.load(audio_path,
+                                                   normalize=self.wavform_norm)
         pcm_enroll, sample_rate_enroll = torchaudio.load(
-            audio_path_2, normalize=self.wavform_norm
-        )
-        return self.extract_speech_from_pcm(pcm_mix,
-                                            sample_rate_mix,
-                                            pcm_enroll,
-                                            sample_rate_enroll)
+            audio_path_2, normalize=self.wavform_norm)
+        return self.extract_speech_from_pcm(pcm_mix, sample_rate_mix,
+                                            pcm_enroll, sample_rate_enroll)
 
-    def extract_speech_from_pcm(self,
-                                pcm_mix: torch.Tensor,
-                                sample_rate_mix: int,
-                                pcm_enroll: torch.Tensor,
+    def extract_speech_from_pcm(self, pcm_mix: torch.Tensor,
+                                sample_rate_mix: int, pcm_enroll: torch.Tensor,
                                 sample_rate_enroll: int):
         if self.apply_vad:
             # TODO(Binbin Zhang): Refine the segments logic, here we just
@@ -107,11 +101,12 @@ class Extractor:
                 wav = wav.mean(dim=0, keepdim=True)
             if sample_rate_enroll != vad_sample_rate:
                 transform = torchaudio.transforms.Resample(
-                    orig_freq=sample_rate_enroll, new_freq=vad_sample_rate
-                )
+                    orig_freq=sample_rate_enroll, new_freq=vad_sample_rate)
                 wav = transform(wav)
 
-            segments = get_speech_timestamps(wav, self.vad, return_seconds=True)
+            segments = get_speech_timestamps(wav,
+                                             self.vad,
+                                             return_seconds=True)
             pcmTotal = torch.Tensor()
             if len(segments) > 0:  # remove all the silence
                 for segment in segments:
@@ -126,19 +121,19 @@ class Extractor:
         pcm_mix = pcm_mix.to(torch.float)
         if sample_rate_mix != self.resample_rate:
             pcm_mix = torchaudio.transforms.Resample(
-                orig_freq=sample_rate_mix, new_freq=self.resample_rate
-            )(pcm_mix)
+                orig_freq=sample_rate_mix,
+                new_freq=self.resample_rate)(pcm_mix)
         pcm_enroll = pcm_enroll.to(torch.float)
         if sample_rate_enroll != self.resample_rate:
             pcm_enroll = torchaudio.transforms.Resample(
-                orig_freq=sample_rate_enroll, new_freq=self.resample_rate
-            )(pcm_enroll)
+                orig_freq=sample_rate_enroll,
+                new_freq=self.resample_rate)(pcm_enroll)
 
         if self.joint_training:
             if self.speaker_feat:
-                feats = self.compute_fbank(
-                    pcm_enroll, sample_rate=self.resample_rate, cmn=True
-                )
+                feats = self.compute_fbank(pcm_enroll,
+                                           sample_rate=self.resample_rate,
+                                           cmn=True)
                 feats = feats.unsqueeze(0)
             else:
                 feats = pcm_enroll
@@ -147,13 +142,13 @@ class Extractor:
             pcm_mix = pcm_mix.to(self.device)
             with torch.no_grad():
                 outputs = self.model(pcm_mix, feats)
-                outputs = outputs[0] if isinstance(outputs, (list, tuple)) else outputs
+                outputs = outputs[0] if isinstance(outputs,
+                                                   (list, tuple)) else outputs
             target_speech = outputs.to(torch.device("cpu"))
             if self.output_norm:
                 target_speech = (
-                    target_speech
-                    / abs(target_speech).max(dim=1, keepdim=True).values * 0.9
-                )
+                    target_speech /
+                    abs(target_speech).max(dim=1, keepdim=True).values * 0.9)
             return target_speech
         else:
             return None
@@ -185,7 +180,8 @@ def main():
         speech = model.extract_speech(args.audio_file, args.audio_file2)
         if speech is not None:
             if args.normalize_output:
-                speech = speech / abs(speech).max(dim=1, keepdim=True).values * 0.9
+                speech = speech / abs(speech).max(dim=1,
+                                                  keepdim=True).values * 0.9
             soundfile.write(args.output_file, speech[0], args.resample_rate)
             print("Succeed, see {}".format(args.output_file))
         else:

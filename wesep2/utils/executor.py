@@ -20,7 +20,7 @@ import tableprint as tp
 # if your python version < 3.7 use the below one
 import torch
 
-from wesep.utils.funcs import clip_gradients, compute_fbank, apply_cmvn
+from wesep2.utils.funcs import clip_gradients, compute_fbank, apply_cmvn
 import random
 
 
@@ -83,7 +83,7 @@ class Executor:
                 enroll = enroll.float().to(device)
                 spk_label = spk_label.to(device)
 
-                with torch.cuda.amp.autocast(enabled=enable_amp):
+                with torch.amp.autocast('cuda', enabled=enable_amp):
                     if SSA_enroll_prob > 0:
                         if SSA_enroll_prob > random.random():
                             with torch.no_grad():
@@ -179,7 +179,7 @@ class Executor:
                 targets = targets.float().to(device)
                 enroll = enroll.float().to(device)
 
-                with torch.cuda.amp.autocast(enabled=enable_amp):
+                with torch.amp.autocast('cuda', enabled=enable_amp):
                     outputs = model(features, enroll)
                     if not isinstance(outputs, (list, tuple)):
                         outputs = [outputs]
