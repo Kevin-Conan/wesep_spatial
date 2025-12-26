@@ -9,21 +9,16 @@
 https://github.com/wenet-e2e/wesep.git
 ```
 
-* Wesep2 targets modern PyTorch and Python versions to support new architectures
-and compiler features.
+* Wesep is under active development and aims to support multi-cue inputs (speaker, visual, spatial, and semantic) as well as multiple modeling paradigms (discriminative, generative, and autoregressive).
 ``` sh
-conda create -n wesep2 python=3.10
-conda activate wesep2
-pip install torch>=2.6 torchaudio>=2.6
-pip install -r requirements.txt
-pre-commit install  # for clean and tidy code
-```
-
-* For Wesep, Create conda env: pytorch version >= 1.12.0 is required !!!
-``` sh
-conda create -n wesep python=3.9
+conda create -n wesep python=3.10
 conda activate wesep
+
+# Recommended (modern PyTorch)
+pip install torch>=2.6 torchaudio>=2.6
+# Alternative (legacy GPUs, e.g. V100)
 conda install pytorch=1.12.1 torchaudio=0.12.1 cudatoolkit=11.3 -c pytorch -c conda-forge
+
 pip install -r requirements.txt
 pre-commit install  # for clean and tidy code
 ```

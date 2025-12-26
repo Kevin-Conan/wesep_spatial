@@ -212,8 +212,8 @@ def train(config="conf/config.yaml", **kwargs):
     optimizer_list = []
 
     logger.info("<== Model ==>")
-    model = get_model(configs["model"]["tse_model"])(
-        configs["model_args"]["tse_model"])
+    model = get_model(
+        configs["model"]["tse_model"])(**configs["model_args"]["tse_model"])
     num_params = sum(param.numel() for param in model.parameters())
 
     if rank == 0:
@@ -266,8 +266,6 @@ def train(config="conf/config.yaml", **kwargs):
     model_list.append(ddp_model)
     optimizer_list.append(optimizer)
     scheduler_list.append(scheduler)
-    # scaler = torch.amp.GradScaler('cuda', enabled=configs["enable_amp"])
-    # For torch 1.6+
     scaler = torch.cuda.amp.GradScaler(enabled=configs["enable_amp"])
 
     # If specify checkpoint, load some info from checkpoint.

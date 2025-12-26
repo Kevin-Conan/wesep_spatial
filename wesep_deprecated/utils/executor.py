@@ -83,9 +83,7 @@ class Executor:
                 enroll = enroll.float().to(device)
                 spk_label = spk_label.to(device)
 
-                # with torch.amp.autocast('cuda', enabled=enable_amp):
-                with torch.cuda.amp.autocast(
-                        enabled=enable_amp):  # For torch 1.6+
+                with torch.cuda.amp.autocast(enabled=enable_amp):
                     if SSA_enroll_prob > 0:
                         if SSA_enroll_prob > random.random():
                             with torch.no_grad():
@@ -181,7 +179,7 @@ class Executor:
                 targets = targets.float().to(device)
                 enroll = enroll.float().to(device)
 
-                with torch.amp.autocast('cuda', enabled=enable_amp):
+                with torch.cuda.amp.autocast(enabled=enable_amp):
                     outputs = model(features, enroll)
                     if not isinstance(outputs, (list, tuple)):
                         outputs = [outputs]
