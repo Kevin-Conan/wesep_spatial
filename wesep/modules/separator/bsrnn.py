@@ -195,7 +195,7 @@ class BSNet(nn.Module):
         self.band_comm = ResRNN(self.feature_dim,
                                 self.feature_dim * 2,
                                 bidirectional=True,
-                                norm_type=norm_type)
+                                norm_type='GN')
 
     def forward(self, input):
         # input shape: B, nband*N, T

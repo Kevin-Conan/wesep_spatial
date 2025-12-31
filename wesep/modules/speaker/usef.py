@@ -15,6 +15,9 @@ from wesep.modules.common.get_layer_from_string import get_layer
 
 
 class USEF_attentionblock(nn.Module):
+    """
+        https://github.com/ZBang/USEF-TSE/blob/main/models/local/TFgridnet.py
+    """
 
     def __getitem__(self, key):
         return getattr(self, key)
