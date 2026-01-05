@@ -127,6 +127,7 @@ class UsefFeature(BaseSpeakerFeature):
         super().__init__()
 
         self.causal = config["causal"]
+        norm_type = "LN" if self.causal else "GN"
 
         ks = (config["t_ksize"], 3)
         padding = (config["t_ksize"] // 2, 1)
@@ -134,28 +135,30 @@ class UsefFeature(BaseSpeakerFeature):
         if not self.causal:
             # === non-causal: shared encoder ===
             self.usef_con2v = nn.Sequential(
-                select_norm("GN", config["spec_dim"], eps),
+                select_norm(norm_type, config["spec_dim"], eps),
                 nn.Conv2d(config["spec_dim"],
                           config["emb_dim"],
                           ks,
                           padding=padding),
             )
         else:
+            self.usef_con2v = nn.Sequential(
+                select_norm(norm_type, (config["spec_dim"], config["enc_dim"]),
+                            eps),
+                nn.Conv2d(config["spec_dim"],
+                          config["emb_dim"],
+                          ks,
+                          padding=padding),
+            )
             # === causal: individual encoder + norm ===
-            self.mix_encoder = nn.Sequential(
-                select_norm("cLN", config["spec_dim"], eps),
-                nn.Conv2d(config["spec_dim"],
-                          config["emb_dim"],
-                          ks,
-                          padding=padding),
-            )
-            self.enroll_encoder = nn.Sequential(
-                select_norm("GN", config["spec_dim"], eps),
-                nn.Conv2d(config["spec_dim"],
-                          config["emb_dim"],
-                          ks,
-                          padding=padding),
-            )
+            # self.mix_encoder = nn.Sequential(
+            #     select_norm("cLN", config["spec_dim"], eps),
+            #     nn.Conv2d(config["spec_dim"], config["emb_dim"], ks, padding=padding),
+            # )
+            # self.enroll_encoder = nn.Sequential(
+            #     select_norm("GN", config["spec_dim"], eps),
+            #     nn.Conv2d(config["spec_dim"], config["emb_dim"], ks, padding=padding),
+            # )
         self.usef_att = USEF_attentionblock(
             emb_dim=config["emb_dim"],
             n_freqs=config["enc_dim"],
@@ -176,11 +179,18 @@ class UsefFeature(BaseSpeakerFeature):
         enroll = enroll.permute(0, 1, 3, 2).contiguous()  # B, 2, T, F
 
         if not self.causal:
-            mix = self.usef_con2v(mix)  # B, 128, T, F,
+            mix = self.usef_con2v(mix)  # B, 128, T, F
             enroll = self.usef_con2v(enroll)
         else:
-            mix = self.mix_encoder(mix)
-            enroll = self.enroll_encoder(enroll)
+            mix = mix.permute(0, 2, 1, 3).contiguous()  # B, T, 2, F
+            mix = self.usef_con2v[0](mix)  # LN over 2, F
+            mix = mix.permute(0, 2, 1, 3).contiguous()  # B, 2, T, F
+            mix = self.usef_con2v[1](mix)  # Conv2d
+
+            enroll = enroll.permute(0, 2, 1, 3).contiguous()
+            enroll = self.usef_con2v[0](enroll)
+            enroll = enroll.permute(0, 2, 1, 3).contiguous()
+            enroll = self.usef_con2v[1](enroll)
 
         enroll = self.usef_att(mix, enroll)  # B, 128, T, F
 

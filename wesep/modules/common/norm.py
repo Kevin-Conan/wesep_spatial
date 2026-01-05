@@ -9,10 +9,13 @@ def select_norm(norm, dim, eps=1e-5, group=1):
     Build normalize layer
     LN cost more memory than BN
     """
-    if norm not in ["cLN", "gLN", "GN", "BN"]:
+    if norm not in ["cLN", "LN", "gLN", "GN", "BN"]:
         raise RuntimeError("Unsupported normalize layer: {}".format(norm))
     if norm == "cLN":
         return ChannelWiseLayerNorm(dim, eps, elementwise_affine=True)
+    elif norm == "LN":
+        # dim can be int or tuple
+        return nn.LayerNorm(dim, eps, elementwise_affine=True)
     elif norm == "GN":
         return nn.GroupNorm(group, dim, eps)
     elif norm == "BN":
