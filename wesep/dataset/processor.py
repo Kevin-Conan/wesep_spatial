@@ -300,7 +300,9 @@ def parse_raw(data):
                                 f"mix={sample_rate}, src={sr}")
 
             example[f"spk{i}"] = spk_id
-            example[f"wav_spk{i}"] = wav_spk
+            example[
+                f"wav_spk{i}"] = wav_spk[:
+                                         1, :]  # Only obtain the first channel as target
         yield example
 
 
@@ -661,47 +663,95 @@ def resample(data, resample_rate=16000):
         yield sample
 
 
-def get_random_chunk(data_list, chunk_len):
-    """Get random chunk
+# def get_random_chunk_oldversion(data_list, chunk_len):
+#     """Get random chunk
 
+#     Args:
+#         data_list: [torch.Tensor: 1XT] (random len)
+#         chunk_len: chunk length
+
+#     Returns:
+#         [torch.Tensor] (exactly chunk_len)
+#     """
+#     # Assert all entries in the list share the same length
+#     assert False not in [len(i) == len(data_list[0]) for i in data_list]
+#     data_list = [data[0] for data in data_list]
+
+#     data_len = len(data_list[0])
+
+#     # random chunk
+#     if data_len >= chunk_len:
+#         chunk_start = random.randint(0, data_len - chunk_len)
+#         for i in range(len(data_list)):
+#             temp_data = data_list[i][chunk_start:chunk_start + chunk_len]
+#             while torch.equal(temp_data, torch.zeros_like(temp_data)):
+#                 chunk_start = random.randint(0, data_len - chunk_len)
+#                 temp_data = data_list[i][chunk_start:chunk_start + chunk_len]
+#             data_list[i] = temp_data
+#             # re-clone the data to avoid memory leakage
+#             if type(data_list[i]) == torch.Tensor:
+#                 data_list[i] = data_list[i].clone()
+#             else:  # np.array
+#                 data_list[i] = data_list[i].copy()
+#     else:
+#         # padding
+#         repeat_factor = chunk_len // data_len + 1
+#         for i in range(len(data_list)):
+#             if type(data_list[i]) == torch.Tensor:
+#                 data_list[i] = data_list[i].repeat(repeat_factor)
+#             else:  # np.array
+#                 data_list[i] = np.tile(data_list[i], repeat_factor)
+#             data_list[i] = data_list[i][:chunk_len]
+#     data_list = [data.unsqueeze(0) for data in data_list]
+#     return data_list
+
+
+def get_random_chunk(data_list, chunk_len):
+    """
     Args:
-        data_list: [torch.Tensor: 1XT] (random len)
-        chunk_len: chunk length
+        data_list: list[Tensor], shapes like
+                   mix: [1, C, T]
+                   target: [1, T] or [T]
+        chunk_len: int
 
     Returns:
-        [torch.Tensor] (exactly chunk_len)
+        list[Tensor], same leading dims, last dim = chunk_len
     """
-    # Assert all entries in the list share the same length
-    assert False not in [len(i) == len(data_list[0]) for i in data_list]
-    data_list = [data[0] for data in data_list]
+    # 1. 去掉 target 的 batch 维（如果有）
+    normed = []
+    for d in data_list:
+        if d.dim() == 2:
+            d = d.unsqueeze(0)  # [1, T]
+        normed.append(d)
 
-    data_len = len(data_list[0])
+    # 2. 时间长度一致性
+    T = normed[0].size(-1)
+    assert all(d.size(-1) == T for d in normed)
 
-    # random chunk
-    if data_len >= chunk_len:
-        chunk_start = random.randint(0, data_len - chunk_len)
-        for i in range(len(data_list)):
-            temp_data = data_list[i][chunk_start:chunk_start + chunk_len]
-            while torch.equal(temp_data, torch.zeros_like(temp_data)):
-                chunk_start = random.randint(0, data_len - chunk_len)
-                temp_data = data_list[i][chunk_start:chunk_start + chunk_len]
-            data_list[i] = temp_data
-            # re-clone the data to avoid memory leakage
-            if type(data_list[i]) == torch.Tensor:
-                data_list[i] = data_list[i].clone()
-            else:  # np.array
-                data_list[i] = data_list[i].copy()
-    else:
-        # padding
-        repeat_factor = chunk_len // data_len + 1
-        for i in range(len(data_list)):
-            if type(data_list[i]) == torch.Tensor:
-                data_list[i] = data_list[i].repeat(repeat_factor)
-            else:  # np.array
-                data_list[i] = np.tile(data_list[i], repeat_factor)
-            data_list[i] = data_list[i][:chunk_len]
-    data_list = [data.unsqueeze(0) for data in data_list]
-    return data_list
+    # 3. 随机切片
+    if T >= chunk_len:
+        chunk_start = random.randint(0, T - chunk_len)
+
+        out = []
+        for d in normed:
+            chunk = d[..., chunk_start:chunk_start + chunk_len]
+
+            # 防止全 0（通常只对 target 有意义）
+            while torch.all(chunk == 0):
+                chunk_start = random.randint(0, T - chunk_len)
+                chunk = d[..., chunk_start:chunk_start + chunk_len]
+
+            out.append(chunk.clone())
+        return out
+
+    # 4. padding / repeat
+    repeat_factor = chunk_len // T + 1
+    out = []
+    for d in normed:
+        d_rep = d.repeat(*([1] * (d.dim() - 1)), repeat_factor)
+        out.append(d_rep[..., :chunk_len].clone())
+
+    return out
 
 
 def filter_len(
@@ -727,9 +777,9 @@ def filter_len(
         wav = sample["wav"]
         min_len = min_num_seconds * sample_rate
         max_len = max_num_seconds * sample_rate
-        if wav.size(1) < min_len:
+        if wav.size(-1) < min_len:
             continue
-        elif wav.size(1) > max_len:
+        elif wav.size(-1) > max_len:
             wav = get_random_chunk([wav], max_len)[0]
         sample["wav"] = wav
         yield sample
@@ -769,7 +819,7 @@ def fix_chunk(data, chunk_len):
         all_keys = list(sample.keys())
         for key in all_keys:
             if key.startswith("wav"):
-                sample[key] = sample[key][:, :chunk_len]
+                sample[key] = sample[key][..., :chunk_len]
         yield sample
 
 

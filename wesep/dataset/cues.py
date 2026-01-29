@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from wesep.dataset import processor_speaker
+from wesep.dataset import processor_speaker, processor_spatial
 from wesep.utils.file_utils import load_yaml
 
 # ---------------------------
@@ -151,5 +151,26 @@ def build_spatial_cue(dataset, cue_conf, state, configs):
     """
     Stub for future spatial cue
     """
-    # dataset = Processor(dataset, processor_spatial.xxx, ...)
+    required = cue_conf.get("required", True)
+    scope = cue_conf.get("scope", "speaker")  # "speaker", "utterance"
+
+    policy_conf = cue_conf.get("policy", {})
+    policy_type = policy_conf.get("type", None)  # "random", "fixed"
+    key_field = policy_conf.get("key", None)
+    resource_path = policy_conf.get("resource", None)
+
+    if policy_type is None or key_field is None or resource_path is None:
+        raise ValueError(f"Invalid speaker cue policy config: {policy_conf}")
+
+    if policy_type == "fixed":
+        dataset = dataset.apply(
+            processor_spatial.sample_fixed_spatial_cue,
+            resource_path,
+            key_field=key_field,
+            scope=scope,
+            required=required,
+        )
+
+    else:
+        raise ValueError(f"Unknown speaker cue policy type: {policy_type}")
     return dataset
