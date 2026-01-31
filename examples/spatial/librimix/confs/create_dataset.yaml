@@ -31,7 +31,7 @@ dataset:
     output: "/data1/yxy05/Spatial_librimix/16k/min"
   splits:
     train: "train-clean-100"
-    validation: "dev-clean"
+    dev: "dev-clean"
     test: "test-clean"
   counts:
     train: 20000

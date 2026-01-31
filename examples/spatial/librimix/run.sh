@@ -14,7 +14,7 @@ fs=16k
 min_max=min
 noise_type="clean"
 data_type="raw" # shard/raw
-Libri2Mix_dir=/zhangke/zk/wesep_update/wesep_wenet/examples/spatial/librimix/data/librimix/Libri2Mix_spatial #/YourPATH/librimix/Libri2Mix_spatial
+Libri2Mix_dir=/data1/yxy05/Spatial_librimix #/YourPATH/librimix/Libri2Mix_spatial
 mix_data_path="${Libri2Mix_dir}/wav${fs}/${min_max}"
 
 # Training related
@@ -44,7 +44,7 @@ num_avg=10
 if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
   echo "Generate datasets ..."
   python ./tools/create_dataset_spatial.py --config ${data_config} \
-    --stage "all"
+    --stage "test"
 fi
 
 if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
