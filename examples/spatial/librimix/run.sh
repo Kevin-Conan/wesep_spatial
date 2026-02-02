@@ -43,7 +43,7 @@ num_avg=10
 
 if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
   echo "Generate datasets ..."
-  python ./tools/create_dataset_spatial.py --config ${data_config} \
+  python ./local/create_dataset_spatial.py --config ${data_config} \
     --stage "all"
 fi
 

@@ -51,7 +51,7 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
       --spatial_root "${spatial_root}" \
       --outfile "${out_dir}/spatial.json"
 
-    # 2) Generate cues.yaml
+    # 2) Generate cues.yaml  add spatial_fields  
 cat > ${data}/${noise_type}/${dset}/cues.yaml << EOF
 cues:
   spatial:
@@ -62,6 +62,7 @@ cues:
       type: fixed
       key: mix_spk_id
       resource: ${data}/${noise_type}/${dset}/cues/spatial.json
+    spatial_fields: ["azimuth","elevation"]  
 EOF
   done
 fi

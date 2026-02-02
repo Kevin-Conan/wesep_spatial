@@ -155,10 +155,12 @@ def build_spatial_cue(dataset, cue_conf, state, configs):
     scope = cue_conf.get("scope", "speaker")  # "speaker", "utterance"
 
     policy_conf = cue_conf.get("policy", {})
+    spatial_fields= cue_conf.get("spatial_fields",["azimuth"]) # ["azimuth", "elevation] if use elevation or ["azimuth"]
+    
     policy_type = policy_conf.get("type", None)  # "random", "fixed"
     key_field = policy_conf.get("key", None)
     resource_path = policy_conf.get("resource", None)
-
+    
     if policy_type is None or key_field is None or resource_path is None:
         raise ValueError(f"Invalid speaker cue policy config: {policy_conf}")
 
@@ -166,6 +168,7 @@ def build_spatial_cue(dataset, cue_conf, state, configs):
         dataset = dataset.apply(
             processor_spatial.sample_fixed_spatial_cue,
             resource_path,
+            spatial_fields,
             key_field=key_field,
             scope=scope,
             required=required,

@@ -48,6 +48,7 @@ def _get_spk_resource(resource_path):
 def sample_fixed_spatial_cue(
     data,
     resource_path,
+    spatial_fields,
     key_field,
     scope="speaker",
     required=True,
@@ -84,29 +85,61 @@ def sample_fixed_spatial_cue(
                     raise RuntimeError(
                         f"empty fixed speaker cue: {lookup_key}")
                 continue
-
-            print("Remain to be calculated")
-            exit()
-            enroll_item = items[0]
-            print(enroll_item)
-
-            wav_path = enroll_item["path"]
-
-            try:
-                print("Remain to be calculated")
-                exit()
-                # enrollment, sr = sf.read(wav_path)
-            except Exception as e:
-                logging.warning(
-                    f"Failed to obatin the spatial cues: {wav_path}, err={e}")
+            target_spk = items["target_spk"]
+            sources_info = items["sources"]
+            
+            target_source_info = None
+            for src in sources_info:
+                if src["spk"] == target_spk:
+                    target_source_info = src
+                    break
+            
+            if target_source_info is None:
                 if required:
-                    raise
+                    raise RuntimeError(f"Target speaker {target_spk} not found in sources list for {lookup_key}")
                 continue
+            
+            feats = []
+            for field in spatial_fields:
+                if field == "azimuth":
+                    val = target_source_info.get("azimuth")
+                    if val is None:
+                        if required: raise ValueError(f"Azimuth missing in {lookup_key}")
+                        val = 0.0
+                    feats.append(val)
+                
+                elif field == "elevation":
+                    val = target_source_info.get("elevation", 0.0) 
+                    feats.append(val)
+                    
+                # elif field == "distance":
+                #     val = target_source_info.get("distance", 1.0) # 默认1米?
+                #     feats.append(val)
+            
+            
+            spatial_vec = np.array(feats, dtype=np.float32) 
+            
+            # print("Remain to be calculated")
+            # exit()
+            # enroll_item = items[0]
+            # print(enroll_item)
 
-            if enrollment.ndim == 1:
-                enrollment = np.expand_dims(enrollment, axis=0)
+            # wav_path = enroll_item["path"]
 
-            sample[f"spatial_{slot}"] = enrollment
+            # try:
+            #     print("Remain to be calculated")
+            #     exit()
+            #     # enrollment, sr = sf.read(wav_path)
+            # except Exception as e:
+            #     logging.warning(
+            #         f"Failed to obatin the spatial cues: {wav_path}, err={e}")
+            #     if required:
+            #         raise
+            #     continue
+
+            # if enrollment.ndim == 1:
+            #     enrollment = np.expand_dims(enrollment, axis=0)
+            sample[f"spatial_{slot}"] = spatial_vec
 
         if scope == "utterance":
             emb = sample[f"spatial_{spk_slots[0]}"]
