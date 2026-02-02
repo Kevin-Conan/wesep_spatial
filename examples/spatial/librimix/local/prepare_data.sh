@@ -44,7 +44,7 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
     out_dir="${real_data}/${noise_type}/${dset}/cues"
     mkdir -p "${out_dir}"
 
-    # 1) Generate cues/speech.json
+    # 1) Generate cues/spatial.json
     spatial_root=${mix_data_path}/${dset}/spatial
     python local/build_spatial_cues.py \
       --samples_jsonl "${mix_index}" \
