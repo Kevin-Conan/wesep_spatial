@@ -34,76 +34,43 @@ loss_args: { }
 #   loss_posi: [[0],[1]]
 #   loss_weight: [[1.0],[1.0]]
 
-model:  # Unchanged
-  tse_model: TSE_BSRNN_SPK
+model:
+  tse_model: TSE_BSRNN_SPATIAL
 model_args:
-  tse_model:
+  tse_model:        
+    win: 512
+    stride: 128  
     separator:
-      sr: *sr
-      win: 512
-      stride: 128
+      sr: 16000
       feature_dim: 128
       num_repeat: 6
       causal: False
       nspk: 1
-    speaker:
-      features:
-        listen:
-          enabled: False
-          glue: 512
-        usef:
-          enabled: True
-          spec_dim: 2
-          approx_qk_dim: 512
-          n_head: 4
-          t_ksize: 3
-        tfmap:
-          enabled: False
-          type: "spec"   # 'spec'
-        context:
-          enabled: True
-          speaker_model:
-          embed_dim: 512     # Need check the speaker encoder in wespeaker
-          atten_dim: 128         # dim in cross-attention
-          num_heads: 2
-          fusion": "multiply"    # add | concat | multiply
-        spkemb:
-          enabled: False
-          speaker_model:
-          fusion: "multiply" # add | concat | multiply
-      speaker_model:
-        fbank:
-          num_mel_bins: 80
-          frame_shift: 10
-          frame_length: 25
-          dither: 1.0
-          sample_rate: *sr       # sampling rate
-        # ---- Speaker Encoder
-        speaker_encoder:
-          model: ECAPA_TDNN_GLOB_c512
-          pretrained:
-          spk_args:
-            embed_dim: 192         # speaker embedding
-            feat_dim: 80         # num_mel_bins
-            pooling_func: "ASTP"
-          ####### ResNet    The pretrained speaker encoders are available from: https://github.com/wenet-e2e/wespeaker/blob/master/docs/pretrained.md
-          # spk_model: ResNet34 # ResNet18, ResNet34, ResNet50, ResNet101, ResNet152
-          # spk_model_init: False #./wespeaker_models/voxceleb_resnet34/avg_model.pt
-          # spk_args:
-          #   feat_dim: 80
-          #   embed_dim: &embed_dim 256
-          #   pooling_func: "TSTP" # TSTP, ASTP, MQMHASTP
-          #   two_emb_layer: False
-          ####### CAMPPlus
-          # spk_model: CAMPPlus
-          # spk_model_init: False
-          # spk_args:
-          #   feat_dim: 80
-          #   embed_dim: &embed_dim 192
-          #   pooling_func: "TSTP" # TSTP, ASTP, MQMHASTP
-          #################################################################
+    spatial:
+      geometry:
+        fs: 16000
+        c: 343.0
+        mic_spacing: 0.03333333 
 
-# find_unused_parameters: True
+      pairs:
+        - [0, 1]
+        - [1, 2]
+        - [2, 3]
+        - [0, 3]
+      mic_coords:
+        - [-0.05,        0.0, 0.0]  # Mic 0 (最左)
+        - [-0.01666667,  0.0, 0.0]  # Mic 1
+        - [ 0.01666667,  0.0, 0.0]  # Mic 2
+        - [ 0.05,        0.0, 0.0]  # Mic 3 (最右)
+      features:
+        ipd: 
+          enabled: True        
+        cdf: 
+          enabled: True        
+        sdf: 
+          enabled: True        
+        delta_stft: 
+          enabled: True
 
 model_init:
   tse_model: null
