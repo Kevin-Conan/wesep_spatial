@@ -44,7 +44,7 @@ num_avg=10
 if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
   echo "Generate datasets ..."
   python ./tools/create_dataset_spatial.py --config ${data_config} \
-    --stage "test"
+    --stage "all"
 fi
 
 if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
@@ -52,7 +52,7 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
   ./local/prepare_data.sh --mix_data_path ${mix_data_path} \
     --data ${data} \
     --noise_type ${noise_type} \
-    --stage 2 \
+    --stage 1 \
     --stop-stage 2
 fi
 
