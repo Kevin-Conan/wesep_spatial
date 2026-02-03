@@ -7,7 +7,7 @@ from wesep.modules.separator.bsrnn import BSRNN
 from wesep.modules.common.deep_update import deep_update
 
 class TSE_BSRNN_SPATIAL(nn.Module):
-    def __init__(self, **config):
+    def __init__(self, config):
         super().__init__()
         
         # --- 1. Basic Configs ---
@@ -25,8 +25,8 @@ class TSE_BSRNN_SPATIAL(nn.Module):
                 "mic_spacing": 0.03333333,
                 "mic_coords": [
                     [-0.05,        0.0, 0.0],  # Mic 0
-                    [-0.01666667,  0.0, 0.0],  # Mic 1
-                    [ 0.01666667,  0.0, 0.0],  # Mic 2
+                    [-0.0166,  0.0, 0.0],  # Mic 1
+                    [ 0.0166,  0.0, 0.0],  # Mic 2
                     [ 0.05,        0.0, 0.0],  # Mic 3
                 ],
             },
@@ -74,12 +74,14 @@ class TSE_BSRNN_SPATIAL(nn.Module):
         self.sep_model = BSRNN(**self.sep_configs)
         self.spatial_ft = SpatialFrontend(self.spatial_configs)
         
-    def forward(self, mix, azi_rad, ele_rad=None):
+    def forward(self, mix ,cue):
         """
-        mix: (B, M, T)
+        mix: (B, M, T) a little question
         """
         B, M, T_wav = mix.shape
-        
+        spatial_cue=cue[0]
+        azi_rad = spatial_cue[:, 0]
+        ele_rad = spatial_cue[:, 1]
         # --- 1. STFT ---
         mix_reshape = mix.view(B * M, T_wav)
         spec = torch.stft(
@@ -143,5 +145,7 @@ class TSE_BSRNN_SPATIAL(nn.Module):
             window=self.window,
             length=T_wav
         )
+        
+        est_wav=est_wav.unsqueeze(1)
         
         return est_wav

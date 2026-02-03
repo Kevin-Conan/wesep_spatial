@@ -18,7 +18,7 @@ Libri2Mix_dir=/data1/yxy05/Spatial_librimix #/YourPATH/librimix/Libri2Mix_spatia
 mix_data_path="${Libri2Mix_dir}/wav${fs}/${min_max}"
 
 # Training related
-gpus="[0]"
+gpus="[0,1,2,3]"
 config=confs/tse_bsrnn_spatial.yaml
 data_config=confs/create_dataset.yaml
 exp_dir=exp/TSE_BSRNN_Spatial
