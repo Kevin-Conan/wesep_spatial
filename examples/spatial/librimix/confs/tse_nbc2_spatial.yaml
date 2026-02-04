@@ -1,5 +1,5 @@
 dataloader_args:
-  batch_size: 4 #RTX2080 1, V100: 8, A800: 16
+  batch_size: 1 #RTX2080 1, V100: 8, A800: 16
   drop_last: true
   num_workers: 12
   pin_memory: true
@@ -15,6 +15,7 @@ dataset_args:
   chunk_len: 48000
   noise_prob: 0 # noqa
   noise_lmdb_file: './data/musan/lmdb'
+  mc_target: True
   cues:
     spatial:
       use: true

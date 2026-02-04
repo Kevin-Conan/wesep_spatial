@@ -179,7 +179,7 @@ def tar_file_and_group_single_spk(data):
         sample["stream"].close()
 
 
-def parse_raw(data):
+def parse_raw(data, mc_target):
     """Parse samples.jsonl line into wav tensors.
 
     Args:
@@ -305,9 +305,13 @@ def parse_raw(data):
                                 f"mix={sample_rate}, src={sr}")
 
             example[f"spk{i}"] = spk_id
-            example[
-                f"wav_spk{i}"] = wav_spk[:
-                                         1, :]  # Only obtain the first channel as target
+            if not mc_target:
+                example[
+                    f"wav_spk{i}"] = wav_spk[:
+                                            1, :]  # Only obtain the first channel as target
+            else :
+                example[
+                    f"wav_spk{i}"] = wav_spk  # obtain all channel
         yield example
 
 
