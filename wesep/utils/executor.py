@@ -124,7 +124,11 @@ class Executor:
                         for ji in range(len(se_loss_weight[0][ii])):
                             out_idx = se_loss_weight[0][ii][ji]
                             w = se_loss_weight[1][ii][ji]
-                            loss = loss + w * (criterion[ii](outputs[out_idx],
+                            if type(criterion[ii]).__name__ == 'PCMLoss':
+                                loss = loss + w * (criterion[ii](outputs[out_idx],
+                                                             target,mix).mean())
+                            else:
+                                loss = loss + w * (criterion[ii](outputs[out_idx],
                                                              target).mean())
 
                 losses.append(loss.item())
