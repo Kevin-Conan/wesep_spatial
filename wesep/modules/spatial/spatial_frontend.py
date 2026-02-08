@@ -132,7 +132,7 @@ class CycEncoder(BaseSpatialFeature):
         
         return spatial_repr
 
-def post(self, mix_repr, spatial_repr):
+    def post(self, mix_repr, spatial_repr):
         """
         Args:
             mix_repr: (B, C_mix, F, T)   <-- 主干特征，例如 (Batch, 192, 257, 100)
@@ -157,15 +157,8 @@ def post(self, mix_repr, spatial_repr):
                     f"Mix: {mix_repr.shape[1]}, Spatial: {spatial_repr.shape[1]}. "
                     f"Please check config['out_channel']."
                 )
-            
-            # 执行广播乘法
-            # PyTorch 会自动处理广播: (B, C, F, T) * (B, C, 1, T) -> (B, C, F, T)
-            # 物理含义：同一个时刻 T，DOA特征对该时刻下所有的频率 F 施加相同的权重
             out = mix_repr * spatial_repr
-            
-        else:
-            out = mix_repr
-        
+
         return out
 
 
