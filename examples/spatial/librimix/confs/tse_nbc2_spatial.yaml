@@ -23,7 +23,7 @@ dataset_args:
   cue_processing:
     spatial:
 
-enable_amp: false
+enable_amp: True
 exp_dir: exp/tse_nbc2_spatial_doaemb
 gpus: '0,1'
 log_batch_interval: 100

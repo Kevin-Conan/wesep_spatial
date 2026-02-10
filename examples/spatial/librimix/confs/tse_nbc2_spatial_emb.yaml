@@ -23,7 +23,7 @@ dataset_args:
   cue_processing:
     spatial:
 
-enable_amp: false
+enable_amp: True
 exp_dir: exp/tse_nbc2_spatial_doaemb
 gpus: '0,1'
 log_batch_interval: 100
@@ -92,7 +92,7 @@ model_init:
   spk_model: null
 
 num_avg: 10
-num_epochs: 150
+num_epochs: 30
 
 optimizer:
   tse_model: Adam

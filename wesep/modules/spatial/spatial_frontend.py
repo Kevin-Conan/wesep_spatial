@@ -268,12 +268,6 @@ class SpatialFrontend(nn.Module):
         self.config = deep_update(DEFAULT_CONFIG, config)
         geo_cfg = self.config['geometry']
         
-        self.stft = STFT(
-            n_fft=geo_cfg['n_fft'], 
-            hop_length=geo_cfg['hop_length'], 
-            win_length=geo_cfg['win_length']
-        )
-        
         freq_bins = geo_cfg['n_fft'] // 2 + 1
         freq_vec = torch.linspace(0, geo_cfg['fs'] / 2, freq_bins)
         

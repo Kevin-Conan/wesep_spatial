@@ -73,6 +73,8 @@ model_args:
         delta_stft: 
           enabled: True
 
+find_unused_parameters: False
+
 model_init:
   tse_model: null
   discriminator: null

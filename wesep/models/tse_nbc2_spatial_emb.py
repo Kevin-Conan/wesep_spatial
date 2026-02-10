@@ -157,6 +157,9 @@ class TSE_NBC2_SPATIAL_EMB(nn.Module):
         # Input: (B, Hidden, F, T) -> Output: (B, Out, F, T)
         est_spec_feat = self.sep_model.decoder(x)
         # --- Reconstruction ---
+        # r = est_spec_feat[:, 0].float()
+        # i = est_spec_feat[:, 1].float()
+        # est_spec = torch.complex(r, i)
         est_spec = torch.complex(est_spec_feat[:, 0], est_spec_feat[:, 1])
         
         # Inverse Normalization
