@@ -45,7 +45,7 @@ class TSE_NBC2_SPATIAL_EMB(nn.Module):
                     "cyc_alpha": 20,
                     "cyc_dimension": 40,
                     "use_ele": True,
-                    "out_channel": 96, 
+                    "out_channel": 88, 
                     "fusion": "multiply" # concat or multiply
                 }
             }
@@ -53,7 +53,7 @@ class TSE_NBC2_SPATIAL_EMB(nn.Module):
         self.spatial_configs = deep_update(spatial_configs, config.get('spatial', {}))
         
         # --- 3. Dynamic Input Size Calculation ---
-        spec_feat_dim = 2 
+        spec_feat_dim = 8 
         
         n_pairs = len(self.spatial_configs['pairs'])
         feat_cfg = self.spatial_configs['features']
@@ -125,8 +125,11 @@ class TSE_NBC2_SPATIAL_EMB(nn.Module):
         ref_mag_mean = torch.abs(Y_ref).mean(dim=(1, 2), keepdim=True) + 1e-8
         Y_norm = Y / ref_mag_mean.unsqueeze(1)
         
-        # Spectral: (B, 2, F, T)
-        spec_feat = torch.stack([Y_norm[:, 0].real, Y_norm[:, 0].imag], dim=1)
+        spec_feat_all = torch.view_as_real(Y_norm)
+
+        spec_feat_perm = spec_feat_all.permute(0, 2, 3, 1, 4)
+
+        spec_feat = spec_feat_perm.flatten(-2, -1).permute(0,3,1,2)
         
         x = self.sep_model.encoder(spec_feat)
         

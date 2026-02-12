@@ -275,7 +275,48 @@ class TriAngular2(BaseClass):
         current_lr = lr_coeff * current_lr
 
         return current_lr
+class StepDecay(BaseClass):
+    """
+    Decays the learning rate by a factor of `gamma` every epoch.
+    """
 
+    def __init__(
+        self,
+        optimizer,
+        num_epochs,
+        epoch_iter,
+        initial_lr,
+        gamma=0.99,  # 衰减因子
+        warm_up_epoch=6,
+        scale_ratio=1.0,
+        warm_from_zero=False,
+    ):
+        # final_lr 在这个逻辑中不是必须的，传入 0.0 占位即可
+        super().__init__(
+            optimizer,
+            num_epochs,
+            epoch_iter,
+            initial_lr,
+            0.0,
+            warm_up_epoch,
+            scale_ratio,
+            warm_from_zero,
+        )
+        self.gamma = gamma
+        self.epoch_iter = epoch_iter
+
+    def get_current_lr(self):
+        # 获取预热系数 (处理 warm_up_epoch 期间的线性增加)
+        lr_coeff = self.get_multi_process_coeff()
+        
+        # 计算当前是第几个 epoch (从 0 开始)
+        # current_iter 在父类 step() 中会被更新
+        current_epoch = self.current_iter // self.epoch_iter
+        
+        # 计算衰减后的 LR: initial_lr * (0.99 ^ epoch)
+        current_lr = lr_coeff * self.initial_lr * (self.gamma ** current_epoch)
+        
+        return current_lr
 
 def show_lr_curve(scheduler):
     import matplotlib.pyplot as plt
