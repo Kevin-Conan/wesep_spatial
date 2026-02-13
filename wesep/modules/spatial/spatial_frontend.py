@@ -138,7 +138,15 @@ class IPDFeature(BaseSpatialFeature):
 
     def post(self, mix_repr, spatial_repr):
         return torch.cat([mix_repr, spatial_repr], dim=1)
-
+    
+class TPDFeature(BaseSpatialFeature):
+    def compute(self,Y,azi,ele,pairs=None):
+        target_pairs = self._get_pairs(pairs)
+        _, _, F_dim, _ = Y.shape
+        TPD = self._compute_tpd(azi, ele, F_dim, target_pairs)
+        return TPD
+    def post(self,mix_repr,spatial_repr):
+        return torch.cat([mix_repr, spatial_repr], dim=1)
 
 class CDFFeature(BaseSpatialFeature):
     def compute(self, Y, azi, ele, pairs=None):
@@ -220,6 +228,7 @@ class SpatialFrontend(nn.Module):
                 "cdf": {"enabled": True},
                 "sdf": {"enabled": True},
                 "delta_stft": {"enabled": True},
+                "tpd": {"enabled": False},
                 "cyc_doaemb":{
                     "enabled": True,
                     "cyc_alpha": 20,

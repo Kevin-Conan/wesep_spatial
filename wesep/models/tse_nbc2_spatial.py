@@ -127,10 +127,8 @@ class TSE_NBC2_SPATIAL(nn.Module):
         features = self.spatial_ft.post_all(spec_feat, spatial_feat_dict)
         
         # --- Backbone ---
-        est_spec_feat_raw = self.sep_model(features)
+        est_spec_feat = self.sep_model(features)
         
-        est_spec_feat = est_spec_feat_raw.view(B, F_dim, T_dim, 2).permute(0, 3, 1, 2)
-        # --- Reconstruction ---
         est_spec = torch.complex(est_spec_feat[:, 0], est_spec_feat[:, 1])
         
         # Inverse Normalization
