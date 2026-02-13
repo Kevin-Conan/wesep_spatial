@@ -71,13 +71,13 @@ model_args:
         ipd: 
           enabled: True        
         cdf: 
-          enabled: False       
+          enabled: True       
         sdf: 
-          enabled: False        
+          enabled: True       
         delta_stft: 
           enabled: True
         cyc_doaemb:
-          enabled: True
+          enabled: False
           cyc_alpha: 20
           cyc_dimension: 40
           use_ele: True

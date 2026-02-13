@@ -153,7 +153,7 @@ def Dataset(
     lists = read_lists(data_list_file)
     shuffle = configs.get("shuffle", False)
     online_mix = configs.get("online_mix", False)
-    mc_target = configs.get("mc_target", False)
+    mc_target = configs.get("mc_target", False) # read multi-channel target speech
 
     dataset = DataList(lists, shuffle=shuffle, repeat_dataset=repeat_dataset)
 
