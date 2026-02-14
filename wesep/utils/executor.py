@@ -21,7 +21,7 @@ import torch
 
 from wesep.utils.funcs import clip_gradients
 from wesep.dataset.collate import AUX_KEY_MAP
-
+import wesep.utils.schedulers as All_scheduler
 
 class Executor:
 
@@ -104,7 +104,8 @@ class Executor:
             for i, batch in enumerate(dataloader):
 
                 cur_iter = (epoch - 1) * epoch_iter + i
-                scheduler.step(cur_iter)
+                if not isinstance(scheduler, All_scheduler.ReduceLROnPlateau):
+                    scheduler.step(cur_iter)
 
                 mix, cues, target = self._extract_model_inputs(batch, device)
 

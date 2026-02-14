@@ -15,7 +15,7 @@
 # limitations under the License.
 
 import math
-
+import torch
 
 class MarginScheduler:
 
@@ -275,6 +275,33 @@ class TriAngular2(BaseClass):
         current_lr = lr_coeff * current_lr
 
         return current_lr
+class ReduceLROnPlateau:
+
+    def __init__(self, optimizer, **kwargs):
+        # 1. 定义 ReduceLROnPlateau 支持的标准参数列表
+        valid_args = {
+            'mode', 'factor', 'patience', 'threshold', 'threshold_mode',
+            'cooldown', 'min_lr', 'eps', 'verbose'
+        }
+
+        clean_kwargs = {k: v for k, v in kwargs.items() if k in valid_args}
+        self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer, **clean_kwargs)
+
+    def step(self, metrics, epoch=None):
+        self.scheduler.step(metrics, epoch)
+
+    def state_dict(self):
+        return self.scheduler.state_dict()
+
+    def load_state_dict(self, state_dict):
+        self.scheduler.load_state_dict(state_dict)
+
+    def get_lr(self):
+        return [
+            param_group['lr']
+            for param_group in self.scheduler.optimizer.param_groups
+        ]
 class StepDecay(BaseClass):
     """
     Decays the learning rate by a factor of `gamma` every epoch.

@@ -15,7 +15,7 @@ dataset_args:
   chunk_len: 48000
   noise_prob: 0 # noqa
   noise_lmdb_file: './data/musan/lmdb'
-  mc_target: True
+  mc_target: False
   cues:
     spatial:
       use: true
@@ -105,12 +105,11 @@ clip_grad: 5.0
 save_epoch_interval: 1
 
 scheduler:
-  tse_model: ExponentialDecrease
+  tse_model: ReduceLROnPlateau
 scheduler_args:
   tse_model:
-    final_lr: 2.5e-05
     initial_lr: 0.001
-    warm_from_zero: false
-    warm_up_epoch: 0
+    factor: 0.5
+    patience: 3
 
 seed: 42

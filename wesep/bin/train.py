@@ -48,6 +48,15 @@ MAX_NUM_log_files = 100  # The maximum number of log-files to be kept
 logging.getLogger("matplotlib.font_manager").setLevel(logging.ERROR)
 
 
+def get_reduced_val_loss(val_loss, device):
+    val_loss_tensor = torch.tensor(val_loss,
+                                   dtype=torch.float32,
+                                   device=device)
+    dist.all_reduce(val_loss_tensor, op=dist.ReduceOp.SUM)
+    avg_val_loss = val_loss_tensor.item() / dist.get_world_size()
+    return avg_val_loss
+
+
 def train(config="conf/config.yaml", **kwargs):
     """Trains a model on the given features and spk labels.
 
@@ -299,7 +308,6 @@ def train(config="conf/config.yaml", **kwargs):
                 epoch, val_loss))
             train_losses.append(train_loss)
             val_losses.append(val_loss)
-
             best_loss = val_loss
             scheduler.best = best_loss
             # plot
@@ -319,7 +327,11 @@ def train(config="conf/config.yaml", **kwargs):
             plt.savefig(
                 f"{configs['exp_dir']}/{configs['model']['tse_model']}.png")
             plt.close()
-
+        if isinstance(scheduler, schedulers.ReduceLROnPlateau):
+            global_val_loss = get_reduced_val_loss(val_loss, device)
+            if rank == 0:
+                logger.info("Epoch {} Global Val info val_loss {}".format(epoch, global_val_loss))
+            scheduler.step(global_val_loss)
         if rank == 0:
             if (epoch % configs["save_epoch_interval"] == 0
                     or epoch >= configs["num_epochs"] - configs["num_avg"]):
