@@ -21,14 +21,32 @@ class TSE_BSRNN_SPATIAL(nn.Module):
         spatial_configs = {
             "geometry": {
                 "n_fft": self.win,              
-                "fs": self.sr,
+                "fs": 16000,
                 "c": 343.0,
-                "mic_coords": [[-0.05, 0, 0], [-0.0166, 0, 0], [0.0166, 0, 0], [0.05, 0, 0]], 
+                "mic_spacing": 0.03333333,
+                "mic_coords": [
+                    [-0.05,        0.0, 0.0],  # Mic 0
+                    [-0.01666667,  0.0, 0.0],  # Mic 1
+                    [ 0.01666667,  0.0, 0.0],  # Mic 2
+                    [ 0.05,        0.0, 0.0],  # Mic 3
+                ],
             },
-            "pairs": [[0, 1], [1, 2], [2, 3], [0, 3]],
+            "pairs": [
+                [0, 1], [1, 2], [2, 3], [0, 3]
+            ],
             "features": {
-                "ipd": {"enabled": True}, 
-                "cdf": {"enabled": True}
+                "ipd": {"enabled": True},
+                "cdf": {"enabled": True},
+                "sdf": {"enabled": True},
+                "delta_stft": {"enabled": True},
+                "cyc_doaemb":{
+                    "enabled": True,
+                    "cyc_alpha": 20,
+                    "cyc_dimension": 40,
+                    "use_ele": True,
+                    "out_channel": 1, # only use when concat
+                    "fusion_type": "multiply" # concat or multiply
+                }
             }
         }
         self.spatial_configs = deep_update(spatial_configs, config.get('spatial', {}))
@@ -57,30 +75,60 @@ class TSE_BSRNN_SPATIAL(nn.Module):
 
         n_pairs = len(self.pairs)
 
-        self.spec_norm = SubbandNorm(
-            band_width=band_width,
-            spec_dim=2,
-            nband=self.nband,
-            feature_dim=feature_dim,
-            norm_type=norm_type
-        )
-
-        self.ipd_norm = SubbandNorm(
+        feat_cfg = self.spatial_configs['features']
+        self.bandnorm = nn.ModuleDict()
+        self.bandnorm['spec'] = SubbandNorm(
             band_width=band_width,
             spec_dim=n_pairs,
             nband=self.nband,
             feature_dim=feature_dim,
             norm_type=norm_type
         )
-
-        self.dir_norm = SubbandNorm(
-            band_width=band_width,
-            spec_dim=n_pairs,
-            nband=self.nband,
-            feature_dim=feature_dim,
-            norm_type=norm_type
-        )
-
+        
+        if feat_cfg.get('ipd', {}).get('enabled', False): 
+            self.bandnorm['ipd'] = SubbandNorm(
+                band_width=band_width,
+                spec_dim=n_pairs,
+                nband=self.nband,
+                feature_dim=feature_dim,
+                norm_type=norm_type
+            )
+        if feat_cfg.get('cdf', {}).get('enabled', False): 
+            self.bandnorm['cdf'] = SubbandNorm(
+                band_width=band_width,
+                spec_dim=n_pairs,
+                nband=self.nband,
+                feature_dim=feature_dim,
+                norm_type=norm_type
+            )
+        if feat_cfg.get('sdf', {}).get('enabled', False): 
+            self.bandnorm['sdf'] = SubbandNorm(
+                band_width=band_width,
+                spec_dim=n_pairs,
+                nband=self.nband,
+                feature_dim=feature_dim,
+                norm_type=norm_type
+            )
+        if feat_cfg.get('delta_stft', {}).get('enabled', False): 
+            self.bandnorm['delta_stft'] = SubbandNorm(
+                band_width=band_width,
+                spec_dim=2 * n_pairs,
+                nband=self.nband,
+                feature_dim=feature_dim,
+                norm_type=norm_type
+            )
+        if feat_cfg.get('cyc_doaemb',{}).get('enabled',False): 
+            if feat_cfg.get('cyc_doaemb',{}).get('fusion_type') == "concat":
+                self.bandnorm['cyc_doaemb'] = SubbandNorm(
+                    band_width=band_width,
+                    spec_dim=n_pairs,
+                    nband=feat_cfg['cyc_doaemb']['out_channel'],
+                    feature_dim=feature_dim,
+                    norm_type=norm_type
+                )
+            elif feat_cfg.get('cyc_doaemb',{}).get('fusion_type') == "multiply":
+                feat_cfg['cyc_doaemb']['out_channel'] = 96 # dim_hidden    
+        
         self.separator = BSRNN_Separator(
             nband=self.nband,
             num_repeat=num_repeat,
@@ -123,22 +171,47 @@ class TSE_BSRNN_SPATIAL(nn.Module):
 
         spec_feat = torch.stack([Y_norm[:, 0].real, Y_norm[:, 0].imag], dim=1) 
         
-        spatial_dict = self.spatial_ft.compute_all(Y_norm, azi_rad, ele_rad)
-        ipd_feat = spatial_dict['ipd'] 
-        cdf_feat = spatial_dict['cdf']
+        spatial_feat_dict = self.spatial_ft.compute_all(Y_norm, azi_rad, ele_rad)
+        
         
         sub_spec = self.band_split(spec_feat)
-        emb_spec = self.spec_norm(sub_spec) 
+        emb_spec = self.bandnorm['spec'](sub_spec)
+        input_emb = emb_spec
         
-        sub_ipd = self.band_split(ipd_feat)
-        emb_ipd = self.ipd_norm(sub_ipd)    
+        if self.spatial_configs['features']['ipd']['enabled'] :
+            ipd_feat = spatial_feat_dict['ipd']
+            sub_ipd = self.band_split(ipd_feat)
+            emb_ipd = self.bandnorm['ipd'](sub_ipd)
+            input_emb += emb_ipd
         
-        sub_cdf = self.band_split(cdf_feat)
-        emb_cdf = self.dir_norm(sub_cdf)   
-
-        input_emb = emb_spec + emb_ipd + emb_cdf
+        if self.spatial_configs['features']['cdf']['enabled'] :
+            cdf_feat = spatial_feat_dict['cdf']
+            sub_cdf = self.band_split(cdf_feat)
+            emb_cdf = self.bandnorm['cdf'](sub_cdf)
+            input_emb += emb_cdf
         
-        sep_out = self.separator(input_emb)
+        if self.spatial_configs['features']['sdf']['enabled']:
+            sdf_feat = spatial_feat_dict['sdf']
+            sub_sdf = self.band_split(sdf_feat)
+            emb_sdf = self.bandnorm['sdf'](sub_sdf)
+            input_emb += emb_sdf
+        
+        if self.spatial_configs['features']['delta_stft']['enabled']:
+            stft_feat = spatial_feat_dict['delta_stft']
+            sub_stft = self.band_split(stft_feat)
+            emb_stft = self.bandnorm['delta_stft'](sub_stft)
+            input_emb += emb_stft
+        
+        if self.spatial_configs['features']['cyc_doaemb']['enabled'] and self.spatial_configs['features']['cyc_doaemb']['fusion_type'] == 'concat':
+            emb_feat = spatial_feat_dict['cyc_doaemb']
+            sub_emb = self.band_split(emb_feat)
+            emb_emb = self.bandnorm['cyc_doaemb'](sub_emb)
+            input_emb += emb_emb
+        
+        if self.spatial_configs['features']['cyc_doaemb']['enabled'] and self.spatial_configs['features']['cyc_doaemb']['fusion_type'] == 'multiply':
+            input_emb=self.spatial_ft.features['cyc_doaemb'].post(input_emb,spatial_feat_dict['cyc_doaemb'])     
+        
+        sep_out = self.separator(input_emb)   
         
         subband_mix = self.band_split(Y[:, 0])
         est_spec_RI = self.band_masker(sep_out, subband_mix)
