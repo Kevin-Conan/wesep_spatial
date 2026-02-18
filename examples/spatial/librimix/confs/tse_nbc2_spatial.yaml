@@ -38,10 +38,11 @@ whole_utt: True
 model:
   tse_model: TSE_NBC2_SPATIAL
 model_args:
-  tse_model:
-    win: 512         
-    stride: 256      
-    separator:
+  tse_model:         
+    full_input : True
+    separator:    
+      win: 512         
+      stride: 256   
       n_layers: 8          
       dim_hidden: 96       
       dim_ffn: 192        
@@ -52,10 +53,10 @@ model_args:
         n_conv_groups: 8
     spatial:
       geometry:
+        n_fft: 512
         fs: 16000
         c: 343.0
         mic_spacing: 0.03333333 
-
       pairs:
         - [0, 1]
         - [1, 2]
@@ -77,12 +78,10 @@ model_args:
           enabled: False
         cyc_doaemb:
           enabled: True
-          cyc_alpha: 20
-          cyc_dimension: 40
-          use_ele: True
-          out_channel: 1          
-          fusion_type: multiply
-      full_input : True
+          encoder_kwargs:
+            cyc_alpha: 20
+            cyc_dimension: 40
+            use_ele: True       
 
 # find_unused_parameters: True
 

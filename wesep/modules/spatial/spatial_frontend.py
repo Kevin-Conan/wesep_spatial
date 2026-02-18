@@ -37,7 +37,7 @@ class BaseSpatialFeature(nn.Module):
         TPD = self.omega_over_c.view(1, 1, F_dim, 1) * dist_delay.unsqueeze(-1).unsqueeze(-1)
         return TPD 
 
-    def compute(self, azi, ele=None, Y=None,pairs=None):
+    def compute(self, azi=None, ele=None, Y=None,pairs=None):
         raise NotImplementedError
 
     def post(self, mix_repr, spatial_repr):
@@ -50,9 +50,7 @@ class CycEncoder(BaseSpatialFeature):
         enc_cfg = self.config
         self.embed_dim = enc_cfg['cyc_dimension']  # e.g., 40
         self.alpha = enc_cfg.get('cyc_alpha', 1.0) # e.g., 20
-        self.enabled = enc_cfg['enabled']
         self.use_ele = enc_cfg.get('use_ele', False) 
-        self.fusion = enc_cfg.get('fusion_type',"concat")
         out_channels = enc_cfg['out_channel']
         
         self.cyc_pos = CycPosEncoding(embed_dim=self.embed_dim, alpha=self.alpha)
@@ -69,9 +67,6 @@ class CycEncoder(BaseSpatialFeature):
         self.out_channels = out_channels
 
     def compute(self, azi, ele=None, Y=None,pairs=None):
-        if not self.enabled:
-            return None
-
         if azi.dim() == 1:
             azi = azi.unsqueeze(1) # (B,) -> (B, 1)
         if ele is not None and ele.dim() == 1:
@@ -106,26 +101,32 @@ class CycEncoder(BaseSpatialFeature):
         """
         if spatial_repr is None:
             return mix_repr
-            
-        if self.fusion == "concat":
-            target_F = mix_repr.shape[2]
-            target_T = mix_repr.shape[3]
-            spatial_repr_expanded = spatial_repr.expand(-1, -1, target_F, target_T)
-            out = torch.cat([mix_repr, spatial_repr_expanded], dim=1)
-            
-        elif self.fusion == "multiply":
-            if mix_repr.shape[1] != spatial_repr.shape[1]:
-                raise ValueError(
-                    f"Fusion 'multiply' requires same channel dimensions. "
-                    f"Mix: {mix_repr.shape[1]}, Spatial: {spatial_repr.shape[1]}. "
-                    f"Please check config['out_channel']."
-                )
-            out = mix_repr * spatial_repr
-
+        if mix_repr.shape[1] != spatial_repr.shape[1]:
+            raise ValueError(
+                f"Fusion 'multiply' requires same channel dimensions. "
+                f"Mix: {mix_repr.shape[1]}, Spatial: {spatial_repr.shape[1]}. "
+                f"Please check config['out_channel']."
+            )
+        out = mix_repr * spatial_repr
         return out
+    
+class CycEncoderGroup(BaseSpatialFeature):
+    def __init__(self, config):
+        super().__init__(config)
+        encoder_kwargs = config['encoder_kwargs']
+        num_encoder = config['num_encoder']
+        self.encoders = nn.ModuleList([
+            CycEncoder(encoder_kwargs) 
+            for _ in range(num_encoder)
+        ])
 
+    def compute(self, azi, ele=None, Y=None, pairs=None,layer_idx=0):
+        return self.encoders[layer_idx].compute(azi,ele)
+
+    def post(self, mix_repr, spatial_repr,layer_idx=0):
+        return self.encoders[layer_idx].post(mix_repr,spatial_repr)
 class IPDFeature(BaseSpatialFeature):
-    def compute(self, Y, azi, ele, pairs=None):
+    def compute(self, Y, azi=None, ele=None, pairs=None):
         target_pairs = self._get_pairs(pairs)
         ipd_list = []
         for (i, j) in target_pairs:
@@ -138,7 +139,7 @@ class IPDFeature(BaseSpatialFeature):
         return torch.cat([mix_repr, spatial_repr], dim=1)
 
 class CDFFeature(BaseSpatialFeature):
-    def compute(self, Y, azi, ele, pairs=None):
+    def compute(self, Y, azi, ele=None, pairs=None):
         target_pairs = self._get_pairs(pairs)
         ipd_list = []
         for (i, j) in target_pairs:
@@ -157,7 +158,7 @@ class CDFFeature(BaseSpatialFeature):
 
 
 class SDFFeature(BaseSpatialFeature):
-    def compute(self, Y, azi, ele, pairs=None):
+    def compute(self, Y, azi, ele=None, pairs=None):
         target_pairs = self._get_pairs(pairs)
         ipd_list = []
         for (i, j) in target_pairs:
@@ -175,7 +176,7 @@ class SDFFeature(BaseSpatialFeature):
         return torch.cat([mix_repr, spatial_repr], dim=1)
 
 class DSTFTFeature(BaseSpatialFeature):
-    def compute(self, Y, azi, ele, pairs=None):
+    def compute(self, Y, azi=None, ele=None, pairs=None):
         target_pairs = self._get_pairs(pairs)
         d_list = []
         
@@ -262,7 +263,7 @@ class SpatialFrontend(nn.Module):
             self.features['delta_stft'] = DSTFTFeature({'pairs': self.default_pairs}, geometry_ctx)
             
         if feat_cfg['cyc_doaemb']['enabled']:
-            self.features['cyc_doaemb']= CycEncoder(feat_cfg['cyc_doaemb'])
+            self.features['cyc_doaemb']= CycEncoderGroup(feat_cfg['cyc_doaemb'])
 
     def compute_all(self, Y, azi, ele=None, pairs=None):
         if ele is None:
