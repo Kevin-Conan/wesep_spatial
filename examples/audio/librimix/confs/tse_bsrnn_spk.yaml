@@ -11,7 +11,6 @@ dataset_args:
   shuffle: true
   shuffle_args:
     shuffle_size: 2500
-  whole_utt : True
   chunk_len: 48000
   noise_prob: 0 # prob to add noise aug per sample
   noise_lmdb_file: './data/musan/lmdb'

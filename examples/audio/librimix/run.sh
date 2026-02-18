@@ -14,13 +14,13 @@ fs=16k
 min_max=min
 noise_type="clean"
 data_type="raw" # shard/raw
-Libri2Mix_dir=/root/Spatial_librimix 
+Libri2Mix_dir=/YourPATH/librimix/Libri2Mix
 mix_data_path="${Libri2Mix_dir}/wav${fs}/${min_max}"
 
 # Training related
-gpus="[0,1,2,3,4,5]"
+gpus="[0]"
 config=confs/tse_bsrnn_spk.yaml
-exp_dir=exp/TSE_BSRNN_SPK_spatial
+exp_dir=exp/TSE_BSRNN_SPK
 if [ -z "${config}" ] && [ -f "${exp_dir}/config.yaml" ]; then
   config="${exp_dir}/config.yaml"
 fi
@@ -44,8 +44,8 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
   ./local/prepare_data.sh --mix_data_path ${mix_data_path} \
     --data ${data} \
     --noise_type ${noise_type} \
-    --stage 3 \
-    --stop-stage 3
+    --stage 1 \
+    --stop-stage 4
 fi
 
 data=${data}/${noise_type}
