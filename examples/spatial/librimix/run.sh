@@ -19,9 +19,9 @@ mix_data_path="${Libri2Mix_dir}/wav${fs}/${min_max}"
 
 # Training related
 gpus="[0,1,2,3,4,5]"
-config=confs/tse_nbc2_spatial.yaml
+config=confs/tse_bsrnn_spatial.yaml
 data_config=confs/create_dataset.yaml
-exp_dir=exp/TSE_nbc2_test_all
+exp_dir=exp/TSE_bsrnn_emb_test
 if [ -z "${config}" ] && [ -f "${exp_dir}/config.yaml" ]; then
   config="${exp_dir}/config.yaml"
 fi
@@ -133,4 +133,7 @@ if [ ${stage} -le 6 ] && [ ${stop_stage} -ge 6 ]; then
     --use_dnsmos "${use_dnsmos}" \
     --dnsmos_use_gpu "${dnsmos_use_gpu}" \
     --n_gpu "${num_gpus}"
+fi
+if [ ${stage} -le 7 ] && [ ${stop_stage} -ge 7 ]; then
+  python wesep/modules/separator/nbc2.py
 fi
