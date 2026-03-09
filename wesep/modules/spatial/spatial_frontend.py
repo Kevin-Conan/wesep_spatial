@@ -104,15 +104,11 @@ class InitStatesFeature(BaseSpatialFeature):
             if safe_ele.dim() == 2: safe_ele = safe_ele[:, 0]
         else:
             safe_ele = None
-            
-        if self.encoding_type == "exp":
-            doa_enc = self.encoder(safe_azi, safe_ele)
-        else:
-            doa_enc = self.encoder(safe_azi)
-            if self.use_ele and safe_ele is not None:
-                ele_input = torch.abs(safe_ele) if self.encoding_type in ["oh", "onehot"] else safe_ele
-                ele_enc = self.encoder(ele_input)
-                doa_enc = torch.cat([doa_enc, ele_enc], dim=-1)
+        doa_enc = self.encoder(safe_azi)
+        if self.use_ele and safe_ele is not None:
+            ele_input = torch.abs(safe_ele) if self.encoding_type in ["oh", "onehot"] else safe_ele
+            ele_enc = self.encoder(ele_input)
+            doa_enc = torch.cat([doa_enc, ele_enc], dim=-1)
         band_h0 = self.proj_band_h0(doa_enc)
         band_c0 = self.proj_band_c0(doa_enc)
         comm_h0 = self.proj_comm_h0(doa_enc)
