@@ -6,7 +6,7 @@ from pathlib import Path
 
 def load_speech_json(path):
     """
-    读取资源库: spk_id -> list of {utt_id, path}
+    spk_id -> list of {utt_id, path}
     """
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)

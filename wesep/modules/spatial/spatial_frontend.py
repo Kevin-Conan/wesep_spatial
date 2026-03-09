@@ -360,20 +360,3 @@ class SpatialFrontend(nn.Module):
             out[name] = module.compute(Y=Y, azi=azi, ele=ele, pairs=pairs)
             
         return out
-    def post_all(self, mix_repr, feature_dict):
-        current_feat = mix_repr
-    
-        feat_cfg = self.config['features']
-        
-        for name in feat_cfg:
-            sub_cfg = feat_cfg[name]
-            
-            if not sub_cfg.get('enabled', False):
-                continue
-            
-            if name in self.features and name in feature_dict:
-                module = self.features[name]
-                raw_data = feature_dict[name]
-                current_feat = module.post(current_feat, raw_data)
-        
-        return current_feat
